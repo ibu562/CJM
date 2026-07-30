@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Персоны и путь ученика · Школа «Архитектор смыслов»</title>
+<link rel="stylesheet" href="style.css?v=202607301501">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧭</text></svg>">
+</head>
+<body data-palette="#2a78d6,#eb6834,#1baf7a,#eda100,#e87ba4">
+
+<header class="site-header">
+  <div class="brand">
+    <h1>Персоны и путь ученика</h1>
+    <p class="brand-sub">Школа «Архитектор смыслов» · 5 персон · 13 этапов пути</p>
+  </div>
+  <nav class="tabs" id="nav">
+    <a href="#/" data-route="overview">Обзор</a>
+    <a href="#/persona/P1" data-route="persona">Персоны</a>
+    <a href="#/cjm/P1" data-route="cjm">Путь (CJM)</a>
+    <a href="#/compare" data-route="compare">Пересечения</a>
+    <a href="#/projects" data-route="projects">Проекты</a>
+  </nav>
+  <button id="themeToggle" class="theme-toggle" title="Светлая / тёмная тема" aria-label="Переключить тему">◐</button>
+</header>
+
+<main id="view" class="view"></main>
+
+<footer class="site-footer">
+  <div class="legend-line">
+    <span class="conf conf-g">🟢 данные</span>
+    <span class="conf conf-y">🟡 обоснованный вывод</span>
+    <span class="conf conf-r">🔴 гипотеза</span>
+    <span class="sep">·</span>
+    <span id="metaSource"></span>
+  </div>
+  <div class="footer-note" id="metaBuilt"></div>
+</footer>
+
+<div id="tooltip" class="tooltip" hidden></div>
+
+<script src="data.js?v=202607301501"></script>
+<script src="app.js?v=202607301501"></script>
+</body>
+</html>
