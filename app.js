@@ -726,7 +726,24 @@ function coreItem(it) {
 /* ---------- Проекты ---------- */
 const PROJECTS = [
   { id: "funnel", title: "Реклама → квиз", build: buildFunnel },
+  { id: "app-welcome", title: "App Welcome воронка", build: buildAppWelcome },
 ];
+function buildAppWelcome() {
+  const frag = h("div", {});
+  frag.append(h("section", { class: "section", style: "margin-bottom:14px" },
+    h("h2", {}, "App Welcome воронка: онбординг в приложении Полиса", cmtBtn("Проект «App Welcome воронка» · в целом")),
+    h("p", { class: "section-sub", text:
+      "Три дорожки бесплатных пользователей приложения — от установки до первой ценности. Документ встроен целиком; комментировать можно кнопкой выше." })));
+  const iframe = h("iframe", { class: "proj-frame", src: "projects/onboarding-app.html",
+    title: "Онбординг в приложении Полиса — три дорожки",
+    onload: function () {
+      const fit = () => { try { this.style.height = (this.contentDocument.body.scrollHeight + 40) + "px"; } catch (e) {} };
+      fit.call(this);
+      setTimeout(() => fit.call(this), 600);
+    } });
+  frag.append(iframe);
+  return frag;
+}
 function renderProjects(sub) {
   const proj = PROJECTS.find(p => p.id === sub) || PROJECTS[0];
   const frag = h("div", {});

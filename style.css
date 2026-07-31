@@ -318,6 +318,10 @@ svg.viz text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
 .fextra b { color: var(--brand); }
 .fchecklist { margin: 8px 0 2px; padding-left: 20px; font-size: 13.5px; }
 .fchecklist li { margin: 5px 0; }
+.proj-frame {
+  width: 100%; min-height: 600px; border: 1px solid var(--border);
+  border-radius: 12px; background: #ffffff; display: block;
+}
 
 /* ============ Легенда-чипы ============ */
 .lchip {
