@@ -322,6 +322,57 @@ function personaLegend(visible, onToggle) {
   return wrap;
 }
 
+/* ---------- Комментарии (Google Форма Ирины) ---------- */
+const COMMENTS = {
+  action: "https://docs.google.com/forms/d/e/1FAIpQLScvAvXWK8JJvi-0vY1j68Ezk6Ge7Yp2UbshZ2yB5kVrttCcVw/formResponse",
+  view: "https://docs.google.com/forms/d/e/1FAIpQLScvAvXWK8JJvi-0vY1j68Ezk6Ge7Yp2UbshZ2yB5kVrttCcVw/viewform",
+  entries: { block: "entry.2031502579", comment: "entry.1410629096", name: "entry.1575910865" },
+};
+function cmtBtn(blockLabel) {
+  return h("button", { class: "cmt-btn", title: "Оставить комментарий к этому блоку",
+    "aria-label": "Комментировать: " + blockLabel,
+    onclick: e => { e.stopPropagation(); e.preventDefault(); openComment(blockLabel); } }, "💬");
+}
+function closeComment() {
+  const m = document.getElementById("cmodal");
+  if (m) m.remove();
+}
+function openComment(blockLabel) {
+  closeComment();
+  const ta = h("textarea", { placeholder: "Ваш комментарий…" });
+  const who = h("input", { type: "text", placeholder: "Имя (необязательно)" });
+  const status = h("div", { class: "cmodal-status" });
+  const send = h("button", { class: "cmodal-send", text: "Отправить", onclick: async () => {
+    const txt = ta.value.trim();
+    if (!txt) { ta.focus(); return; }
+    send.disabled = true;
+    const params = new URLSearchParams();
+    params.append(COMMENTS.entries.block, blockLabel);
+    params.append(COMMENTS.entries.comment, txt);
+    params.append(COMMENTS.entries.name, who.value.trim());
+    try {
+      await fetch(COMMENTS.action, { method: "POST", mode: "no-cors",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: params.toString() });
+      status.textContent = "Отправлено ✓ Спасибо!";
+      setTimeout(closeComment, 1100);
+    } catch (err) {
+      window.open(COMMENTS.view + "?usp=pp_url&" + COMMENTS.entries.block + "=" + encodeURIComponent(blockLabel), "_blank");
+      closeComment();
+    }
+  } });
+  const overlay = h("div", { id: "cmodal", class: "cmodal-overlay",
+    onclick: e => { if (e.target === overlay) closeComment(); } },
+    h("div", { class: "card cmodal" },
+      h("h3", { text: "Комментарий" }),
+      h("div", { class: "cmodal-block", text: blockLabel }),
+      ta, who, status,
+      h("div", { class: "cmodal-actions" },
+        h("button", { class: "cmodal-cancel", text: "Отмена", onclick: closeComment }),
+        send)));
+  document.body.append(overlay);
+  ta.focus();
+}
+
 /* ---------- Виды ---------- */
 const view = document.getElementById("view");
 
@@ -331,7 +382,7 @@ function renderOverview() {
   for (const pid of PIDS) for (const s of D.stages) counts[D.matrix[pid][s.id].status]++;
 
   frag.append(h("section", { class: "section" },
-    h("h2", { text: "Карта персон" }),
+    h("h2", {}, "Карта персон", cmtBtn("Обзор · Карта персон")),
     h("p", { class: "section-sub", text:
       "Пять персон школы, выведенные из опроса учеников (R1–R28), интервью и поведения на воронке. " +
       "Главный различитель — мотив, а не демография. Клик по карточке — полное досье." }),
@@ -341,7 +392,8 @@ function renderOverview() {
         h("div", { class: "pcard-body" },
           h("div", { class: "pcard-head" },
             h("span", { class: "pid", text: p.id }),
-            h("span", { class: "pname", text: p.name })),
+            h("span", { class: "pname", text: p.name }),
+            cmtBtn(`Обзор · карточка ${p.id} ${p.name}`)),
           h("div", { class: "pcard-type", text: p.type }),
           h("div", { class: "pcard-meta" },
             h("span", { html: `Доля: <b>${p.size_pct}%</b>` }),
@@ -356,14 +408,14 @@ function renderOverview() {
     }))));
 
   frag.append(h("section", { class: "section" },
-    h("h2", { text: "Оси персон: за чем они приходят" }),
+    h("h2", {}, "Оси персон: за чем они приходят", cmtBtn("Обзор · Оси персон")),
     h("p", { class: "section-sub", text:
       "Положение по двум главным осям модели. Размер круга — оценка доли базы (🟡). " +
       "Третья ось, зрелость в предмете, подписана под именем." }),
     h("div", { class: "card chart-card" }, axesScatter())));
 
   frag.append(h("section", { class: "section" },
-    h("h2", { text: "Состояние пути сегодня" }),
+    h("h2", {}, "Состояние пути сегодня", cmtBtn("Обзор · Состояние пути сегодня")),
     h("p", { class: "section-sub" },
       `По матрице «персона × этап»: `,
       h("b", { text: `${counts.red} критических разрывов` }), ", ",
@@ -434,7 +486,7 @@ function renderPersona(pid) {
     const val = p[key];
     if (!val) return null;
     return h("section", { class: "card dsec" + (key === "quote" ? " quote-sec" : "") },
-      h("h3", { text: label }),
+      h("h3", {}, label, cmtBtn(`Досье ${p.id} ${p.name} · ${label}`)),
       h("div", { class: "txt", text: val }));
   }));
 
@@ -458,7 +510,8 @@ function renderCJM(pid) {
       onclick: () => { cjmOverlay = !cjmOverlay; renderCJM(p.id); } })));
 
   frag.append(h("div", { class: "card chart-card" },
-    h("div", { class: "chart-title", text: `Кривая эмоций · ${p.id} ${p.name} — ${p.scenario}` }),
+    h("div", { class: "chart-title" }, `Кривая эмоций · ${p.id} ${p.name} — ${p.scenario}`,
+      cmtBtn(`CJM ${p.id} ${p.name} · кривая эмоций`)),
     h("p", { class: "chart-sub", text: "Шкала −2…+2 по колесу Плутчика. Пунктир — вилка сценария. Наведите на этап." }),
     emotionChart({ pids: cjmOverlay ? PIDS : [p.id], highlight: cjmOverlay ? p.id : null, annotate: cjmOverlay })));
 
@@ -468,7 +521,7 @@ function renderCJM(pid) {
   grid.append(h("div", { class: "cell rowlab stagehead", text: "" }));
   for (const s of D.stages) {
     grid.append(h("div", { class: "cell stagehead" },
-      h("div", { class: "num", text: "ЭТАП " + s.id }),
+      h("div", { class: "num" }, "ЭТАП " + s.id, cmtBtn(`CJM ${p.id} ${p.name} · этап ${s.id} ${s.title}`)),
       h("div", { class: "stitle", text: s.title }),
       h("span", { class: "zone-badge" + (s.zone === "ШОВ Wix→Circle" || s.id === 8 ? " z-shov" : ""), text: s.zone }),
       h("div", { class: "emo-chip", title: D.cjm[p.id][s.id].emotion_term +
@@ -519,14 +572,14 @@ function renderCompare() {
     legend,
     emotionChart({ pids: PIDS, visible: compareVisible, annotate: true, height: 340 }));
   frag.append(h("section", { class: "section" },
-    h("h2", { text: "Пересечения персон" }),
+    h("h2", {}, "Пересечения персон", cmtBtn("Пересечения · Эмоциональные кривые")),
     h("p", { class: "section-sub", text:
       "Три взгляда на общее и различное: кривые эмоций, профиль статусов по этапам и матрица «персона × этап»." }),
     h("div", { class: "card chart-card" }, chartHolder)));
 
   /* 2. Стек статусов */
   frag.append(h("section", { class: "section" },
-    h("h2", { text: "Профиль воронки: сколько персон задето на каждом этапе" }),
+    h("h2", {}, "Профиль воронки: сколько персон задето на каждом этапе", cmtBtn("Пересечения · Профиль воронки")),
     h("p", { class: "section-sub", text: "Высота столбца — все 5 персон; цвет — статус этапа для каждой из них (из матрицы разрывов)." }),
     h("div", { class: "card chart-card" },
       statusBars(),
@@ -535,7 +588,7 @@ function renderCompare() {
   /* 3. Матрица */
   const table = buildMatrix();
   frag.append(h("section", { class: "section" },
-    h("h2", { text: "Матрица «персона × этап»" }),
+    h("h2", {}, "Матрица «персона × этап»", cmtBtn("Пересечения · Матрица «персона × этап»")),
     h("p", { class: "section-sub" },
       "Обновлена 05.07 по итогам встречи. Клик по ячейке — подробность; ",
       h("button", { class: "toggle-btn" + (matrixTextMode ? " on" : ""), text: matrixTextMode ? "показать цветом" : "показать текстом",
@@ -546,7 +599,7 @@ function renderCompare() {
   /* 4. Общее ядро и уникальное */
   const { shared, unique } = computeCore();
   frag.append(h("section", { class: "section" },
-    h("h2", { text: "Общее ядро и уникальные боли" }),
+    h("h2", {}, "Общее ядро и уникальные боли", cmtBtn("Пересечения · Общее ядро и уникальные боли")),
     h("p", { class: "section-sub", text:
       "Считается по матрице: общее — этапы с наибольшим суммарным весом проблем (✕=3, ◐=2, !=1); уникальное — критические разрывы, задевающие ровно одну персону." }),
     h("div", { class: "core-lists" },
@@ -611,7 +664,8 @@ function buildMatrix() {
     if (explTxt) {
       explTd.append(h("details", {},
         h("summary", { text: "Пояснение ▾" }),
-        h("div", { class: "expl-body", text: explTxt })));
+        h("div", { class: "expl-body", text: explTxt }),
+        cmtBtn(`Матрица · этап ${s.id} ${s.title} · Пояснение`)));
     } else {
       explTd.append(h("span", { class: "expl-empty", text: "—" }));
     }
@@ -628,7 +682,8 @@ function showMatrixDetail(pid, sid) {
   holder.replaceChildren(h("div", { class: "card matrix-detail" },
     h("div", {},
       h("b", { text: `${personaById[pid].name} · этап ${sid} ${s.title} [${s.zone}]` }),
-      h("span", { text: `  —  ${st.glyph} ${st.label}`, style: "color:var(--ink-2)" })),
+      h("span", { text: `  —  ${st.glyph} ${st.label}`, style: "color:var(--ink-2)" }),
+      cmtBtn(`Матрица · этап ${sid} ${s.title} · ${personaById[pid].name}`)),
     h("div", { style: "margin-top:6px", text: cell.text || "—" }),
     h("div", { style: "margin-top:8px" },
       h("a", { href: `#/cjm/${pid}`, text: `Открыть карту пути ${personaById[pid].name} →`,
@@ -694,7 +749,7 @@ function buildFunnel() {
     return frag;
   }
   frag.append(h("section", { class: "section" },
-    h("h2", { text: "Реклама → квиз: путь холодного трафика" }),
+    h("h2", {}, "Реклама → квиз: путь холодного трафика", cmtBtn("Проект «Реклама → квиз» · в целом")),
     h("p", { class: "section-sub", text:
       "Верх воронки, которого не видно в аналитике: новые лендинги, реклама по состояниям (Instagram), " +
       "квиз B1/S1 как мягкий вход и сегментатор. В скобках у шага — этап базовой карты CJM, " +
@@ -728,6 +783,7 @@ function buildFunnel() {
       h("div", { class: "card fstep" },
         h("div", { class: "fstep-head" },
           h("h3", { text: (q.step_id === 6 ? "ОПЛАТА" : `ШАГ ${q.step_id} · ${q.title}`) + (q.sub ? " — " + q.sub : "") }),
+          cmtBtn(`Реклама → квиз · ${q.step_id === 6 ? "Оплата" : "Шаг " + q.step_id + " " + q.title}`),
           q.map_stages ? h("span", { class: "zone-badge" + (q.step_id === 6 ? " z-shov" : ""), text: q.map_stages }) : null),
         h("div", { class: "fcore", text: q.core }),
         grid,
@@ -744,7 +800,7 @@ function buildFunnel() {
       .split(/\s*·?\s*(?=\d\)\s)/).map(s => s.replace(/·\s*$/, "").trim()).filter(Boolean);
     frag.append(h("section", { class: "section" },
       h("div", { class: "card fstep", style: "border-left:4px solid var(--st-critical)" },
-        h("h3", { text: "До старта рекламы — блокеры 🔴" }),
+        h("h3", {}, "До старта рекламы — блокеры 🔴", cmtBtn("Реклама → квиз · чек-лист до старта")),
         h("ul", { class: "fchecklist" }, items.map(it => h("li", { text: it }))))));
   }
   return frag;
