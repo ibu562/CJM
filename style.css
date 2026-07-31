@@ -336,6 +336,12 @@ svg.viz text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25); cursor: pointer;
 }
 .cmt-fab:hover { transform: translateY(-1px); }
+.sel-cmt-btn {
+  position: fixed; z-index: 94; transform: translateX(-50%);
+  background: var(--brand); color: var(--brand-ink); border: none;
+  border-radius: 999px; padding: 6px 13px; font-size: 12.5px; font-weight: 600;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25); cursor: pointer; white-space: nowrap;
+}
 h2 .cmt-btn, h3 .cmt-btn { font-size: 14px; }
 .pcard-head .cmt-btn { margin-left: auto; }
 .cmodal-overlay {

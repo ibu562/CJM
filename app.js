@@ -740,6 +740,11 @@ function buildAppWelcome() {
       const fit = () => { try { this.style.height = (this.contentDocument.body.scrollHeight + 40) + "px"; } catch (e) {} };
       fit.call(this);
       setTimeout(() => fit.call(this), 600);
+      try {
+        attachSelectionComments(this.contentDocument,
+          () => { const r = this.getBoundingClientRect(); return { x: r.left, y: r.top }; },
+          () => "Проект «App Welcome воронка»");
+      } catch (e) {}
     } });
   frag.append(iframe);
   return frag;
@@ -841,6 +846,39 @@ function route() {
   scrollTo(0, 0);
 }
 addEventListener("hashchange", route);
+
+/* ---------- Комментарий к выделенному тексту ---------- */
+let selBtn = null;
+function hideSelBtn() {
+  if (selBtn) { selBtn.remove(); selBtn = null; }
+}
+function quoteLabel(text, prefix) {
+  const t = text.length > 180 ? text.slice(0, 177) + "…" : text;
+  return (prefix || pageLabel()) + " · Цитата: «" + t.replace(/\s+/g, " ") + "»";
+}
+function attachSelectionComments(doc, offsetFn, prefixFn) {
+  doc.addEventListener("mouseup", () => setTimeout(() => {
+    const sel = doc.getSelection ? doc.getSelection() : window.getSelection();
+    const text = sel ? sel.toString().trim() : "";
+    if (!text || text.length < 3 || sel.rangeCount === 0) { hideSelBtn(); return; }
+    const r = sel.getRangeAt(0).getBoundingClientRect();
+    if (!r || (!r.width && !r.height)) { hideSelBtn(); return; }
+    const off = offsetFn ? offsetFn() : { x: 0, y: 0 };
+    hideSelBtn();
+    selBtn = h("button", { class: "sel-cmt-btn",
+      onmousedown: e => { e.preventDefault(); e.stopPropagation(); },
+      onclick: () => { const q = quoteLabel(text, prefixFn ? prefixFn() : null); hideSelBtn(); openComment(q); } },
+      "💬 Комментировать выделенное");
+    const x = Math.min(Math.max(r.left + off.x + r.width / 2, 110), innerWidth - 110);
+    const y = Math.max(r.top + off.y - 40, 8);
+    selBtn.style.left = x + "px";
+    selBtn.style.top = y + "px";
+    document.body.append(selBtn);
+  }, 10));
+  doc.addEventListener("mousedown", e => { if (!selBtn || !selBtn.contains(e.target)) hideSelBtn(); });
+  doc.addEventListener("scroll", hideSelBtn, true);
+}
+attachSelectionComments(document, null, null);
 
 /* ---------- Плавающая кнопка комментария ---------- */
 function pageLabel() {
