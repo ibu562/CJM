@@ -467,7 +467,7 @@ function renderPersona(pid) {
   const rail = h("aside", { class: "card dossier-rail" },
     h("div", { class: "rail-band", style: `background:${COLOR[p.id]}` }),
     h("div", { class: "rail-body" },
-      h("h2", { text: `${p.id} ${p.name}` }),
+      h("h2", {}, `${p.id} ${p.name}`, cmtBtn(`Досье ${p.id} ${p.name} · карточка персоны`)),
       h("div", { class: "rail-type", text: p.type }),
       h("dl", { class: "rail-kv" },
         h("dt", { text: "Доля базы" }), h("dd", { text: p.size_pct + "% 🟡" }),
@@ -841,6 +841,15 @@ function route() {
   scrollTo(0, 0);
 }
 addEventListener("hashchange", route);
+
+/* ---------- Плавающая кнопка комментария ---------- */
+function pageLabel() {
+  const a = document.querySelector("#nav a.active");
+  return "Страница «" + (a ? a.textContent.trim() : "сайт") + "» · " + (location.hash || "#/");
+}
+document.body.append(h("button", { class: "cmt-fab",
+  title: "Оставить комментарий к этой странице",
+  onclick: () => openComment(pageLabel()) }, "💬 Комментарий"));
 
 /* ---------- Футер и старт ---------- */
 document.getElementById("metaSource").textContent = "Источники: " + D.meta.source;
