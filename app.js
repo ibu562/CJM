@@ -330,8 +330,53 @@ const COMMENTS = {
 };
 function cmtBtn(blockLabel) {
   return h("button", { class: "cmt-btn", title: "Оставить комментарий к этому блоку",
-    "aria-label": "Комментировать: " + blockLabel,
+    "aria-label": "Комментировать: " + blockLabel, "data-block": blockLabel,
     onclick: e => { e.stopPropagation(); e.preventDefault(); openComment(blockLabel); } }, "💬");
+}
+
+/* -- память «мои комментарии» (localStorage этого браузера) -- */
+function getMyComments() {
+  try { return JSON.parse(localStorage.getItem("pm-comments") || "[]"); } catch (e) { return []; }
+}
+function saveMyComment(label) {
+  const arr = getMyComments();
+  arr.push({ l: label, t: new Date().toISOString() });
+  localStorage.setItem("pm-comments", JSON.stringify(arr));
+}
+const normTxt = s => (s || "").replace(/\s+/g, " ").trim().toLowerCase();
+function extractQuote(label) {
+  const m = label.match(/Цитата: «(.+)»\s*$/s);
+  return m ? m[1].replace(/…$/, "").trim() : null;
+}
+const QUOTE_SCOPE = "p, li, h1, h2, h3, h4, td, blockquote, .cell, .txt, .fptxt, .fcore, .fmilestone, .fextra, .core-item, .section-sub, .expl-body, .matrix-detail, .pcard-quote, .chart-sub";
+function ensureQuoteStyle(doc) {
+  if (doc === document || !doc.head || doc.getElementById("pm-quote-style")) return;
+  const st = doc.createElement("style");
+  st.id = "pm-quote-style";
+  st.textContent = ".quoted-comment{background:#fdf3d7;box-shadow:inset 3px 0 0 #fab219;border-radius:4px}.quoted-comment::before{content:'💬 ';font-size:11px}";
+  doc.head.appendChild(st);
+}
+function highlightQuotes(doc, quotes) {
+  if (quotes.length) ensureQuoteStyle(doc);
+  for (const q of quotes) {
+    const nq = normTxt(q);
+    if (nq.length < 4) continue;
+    const matches = [...doc.querySelectorAll(QUOTE_SCOPE)].filter(el => normTxt(el.textContent).includes(nq));
+    const leaves = matches.filter(el => !matches.some(other => other !== el && el.contains(other)));
+    for (const el of leaves) el.classList.add("quoted-comment");
+  }
+}
+function markCommented() {
+  const mine = getMyComments();
+  document.querySelectorAll(".cmt-btn").forEach(b =>
+    b.classList.toggle("commented", mine.some(c => c.l === b.dataset.block)));
+  const quotes = mine.map(c => extractQuote(c.l)).filter(Boolean);
+  highlightQuotes(document, quotes);
+  document.querySelectorAll(".proj-frame").forEach(f => {
+    try { if (f.contentDocument && f.contentDocument.body) highlightQuotes(f.contentDocument, quotes); } catch (e) {}
+  });
+  const fab = document.querySelector(".cmt-fab");
+  if (fab) fab.textContent = mine.length ? `💬 Комментарий · ${mine.length}` : "💬 Комментарий";
 }
 function closeComment() {
   const m = document.getElementById("cmodal");
@@ -354,6 +399,8 @@ function openComment(blockLabel) {
       await fetch(COMMENTS.action, { method: "POST", mode: "no-cors",
         headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: params.toString() });
       status.textContent = "Отправлено ✓ Спасибо!";
+      saveMyComment(blockLabel);
+      markCommented();
       setTimeout(closeComment, 1100);
     } catch (err) {
       window.open(COMMENTS.view + "?usp=pp_url&" + COMMENTS.entries.block + "=" + encodeURIComponent(blockLabel), "_blank");
@@ -745,6 +792,7 @@ function buildAppWelcome() {
           () => { const r = this.getBoundingClientRect(); return { x: r.left, y: r.top }; },
           () => "Проект «App Welcome воронка»");
       } catch (e) {}
+      setTimeout(markCommented, 650);
     } });
   frag.append(iframe);
   return frag;
@@ -844,6 +892,7 @@ function route() {
     a.classList.toggle("active", a.dataset.route === name);
   }
   scrollTo(0, 0);
+  markCommented();
 }
 addEventListener("hashchange", route);
 
