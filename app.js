@@ -327,7 +327,38 @@ const COMMENTS = {
   action: "https://docs.google.com/forms/d/e/1FAIpQLScvAvXWK8JJvi-0vY1j68Ezk6Ge7Yp2UbshZ2yB5kVrttCcVw/formResponse",
   view: "https://docs.google.com/forms/d/e/1FAIpQLScvAvXWK8JJvi-0vY1j68Ezk6Ge7Yp2UbshZ2yB5kVrttCcVw/viewform",
   entries: { block: "entry.2031502579", comment: "entry.1410629096", name: "entry.1575910865" },
+  feed: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQO3LWyVg8VnhGmh54FjvfRcXl0Th2iTex7AAoDOMYTuJiDemVZ42DGoOkN26s_fomdS0yj9WNET9rj/pub?gid=1216491699&single=true&output=csv",
 };
+let ALL_COMMENTS = [];
+function parseCSV(text) {
+  const rows = []; let row = [], cur = "", inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQ) {
+      if (ch === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else inQ = false; }
+      else cur += ch;
+    } else {
+      if (ch === '"') inQ = true;
+      else if (ch === ",") { row.push(cur); cur = ""; }
+      else if (ch === "\n") { row.push(cur); rows.push(row); row = []; cur = ""; }
+      else if (ch !== "\r") cur += ch;
+    }
+  }
+  if (cur !== "" || row.length) { row.push(cur); rows.push(row); }
+  return rows;
+}
+async function fetchComments() {
+  try {
+    const res = await fetch(COMMENTS.feed, { cache: "no-store" });
+    const rows = parseCSV(await res.text()).slice(1);
+    ALL_COMMENTS = rows.filter(r => r.length >= 4 && (r[3] || "").trim()).map(r => ({
+      ts: r[0], block: (r[2] || "").trim(), text: r[3], name: (r[4] || "").trim() || "Без имени" }));
+    markCommented();
+  } catch (e) { /* фид недоступен — работаем без общих меток */ }
+}
+function commentsFor(label) {
+  return ALL_COMMENTS.filter(c => c.block === label);
+}
 function cmtBtn(blockLabel) {
   return h("button", { class: "cmt-btn", title: "Оставить комментарий к этому блоку",
     "aria-label": "Комментировать: " + blockLabel, "data-block": blockLabel,
@@ -356,27 +387,44 @@ function ensureQuoteStyle(doc) {
   st.textContent = ".quoted-comment{background:#fdf3d7;box-shadow:inset 3px 0 0 #fab219;border-radius:4px}.quoted-comment::before{content:'💬 ';font-size:11px}";
   doc.head.appendChild(st);
 }
-function highlightQuotes(doc, quotes) {
-  if (quotes.length) ensureQuoteStyle(doc);
-  for (const q of quotes) {
-    const nq = normTxt(q);
+function highlightQuotes(doc, entries) {
+  if (entries.length) ensureQuoteStyle(doc);
+  for (const en of entries) {
+    const nq = normTxt(en.q);
     if (nq.length < 4) continue;
     const matches = [...doc.querySelectorAll(QUOTE_SCOPE)].filter(el => normTxt(el.textContent).includes(nq));
     const leaves = matches.filter(el => !matches.some(other => other !== el && el.contains(other)));
-    for (const el of leaves) el.classList.add("quoted-comment");
+    for (const el of leaves) {
+      el.classList.add("quoted-comment");
+      el.title = "Есть комментарий — нажмите, чтобы посмотреть или добавить";
+      el.style.cursor = "pointer";
+      el.onclick = e => { e.stopPropagation(); openComment(en.label); };
+    }
   }
 }
 function markCommented() {
   const mine = getMyComments();
-  document.querySelectorAll(".cmt-btn").forEach(b =>
-    b.classList.toggle("commented", mine.some(c => c.l === b.dataset.block)));
-  const quotes = mine.map(c => extractQuote(c.l)).filter(Boolean);
-  highlightQuotes(document, quotes);
+  document.querySelectorAll(".cmt-btn").forEach(b => {
+    const n = commentsFor(b.dataset.block).length;
+    b.classList.toggle("has-comments", n > 0);
+    if (n > 0) b.dataset.count = n; else b.removeAttribute("data-count");
+    b.classList.toggle("commented", !n && mine.some(c => c.l === b.dataset.block));
+  });
+  const entries = [], seen = new Set();
+  for (const c of ALL_COMMENTS) {
+    const q = extractQuote(c.block);
+    if (q && !seen.has(c.block)) { seen.add(c.block); entries.push({ q, label: c.block }); }
+  }
+  for (const c of mine) {
+    const q = extractQuote(c.l);
+    if (q && !seen.has(c.l)) { seen.add(c.l); entries.push({ q, label: c.l }); }
+  }
+  highlightQuotes(document, entries);
   document.querySelectorAll(".proj-frame").forEach(f => {
-    try { if (f.contentDocument && f.contentDocument.body) highlightQuotes(f.contentDocument, quotes); } catch (e) {}
+    try { if (f.contentDocument && f.contentDocument.body) highlightQuotes(f.contentDocument, entries); } catch (e) {}
   });
   const fab = document.querySelector(".cmt-fab");
-  if (fab) fab.textContent = mine.length ? `💬 Комментарий · ${mine.length}` : "💬 Комментарий";
+  if (fab) fab.textContent = ALL_COMMENTS.length ? `💬 Комментарии · ${ALL_COMMENTS.length}` : "💬 Комментарий";
 }
 function closeComment() {
   const m = document.getElementById("cmodal");
@@ -407,11 +455,18 @@ function openComment(blockLabel) {
       closeComment();
     }
   } });
+  const existing = commentsFor(blockLabel);
   const overlay = h("div", { id: "cmodal", class: "cmodal-overlay",
     onclick: e => { if (e.target === overlay) closeComment(); } },
     h("div", { class: "card cmodal" },
-      h("h3", { text: "Комментарий" }),
+      h("h3", { text: existing.length ? `Комментарии (${existing.length})` : "Комментарий" }),
       h("div", { class: "cmodal-block", text: blockLabel }),
+      existing.length ? h("div", { class: "cmodal-list" }, existing.map(c =>
+        h("div", { class: "cmodal-item" },
+          h("div", { class: "ci-head" },
+            h("b", { text: c.name }),
+            h("span", { class: "ci-ts", text: " · " + c.ts })),
+          h("div", { class: "ci-text", text: c.text })))) : null,
       ta, who, status,
       h("div", { class: "cmodal-actions" },
         h("button", { class: "cmodal-cancel", text: "Отмена", onclick: closeComment }),
@@ -943,3 +998,4 @@ document.getElementById("metaSource").textContent = "Источники: " + D.m
 document.getElementById("metaBuilt").textContent =
   "Данные собраны " + D.meta.built + " · матрица обновлена 05.07 · внутренний рабочий документ школы";
 route();
+fetchComments();

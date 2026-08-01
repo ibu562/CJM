@@ -347,6 +347,21 @@ svg.viz text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
   content: "✓"; font-size: 10px; font-weight: 800; color: var(--st-good);
   margin-left: 2px; vertical-align: top;
 }
+.cmt-btn.has-comments { opacity: 1; }
+.cmt-btn.has-comments::after {
+  content: attr(data-count); background: var(--brand); color: var(--brand-ink);
+  border-radius: 999px; padding: 0 5px; font-size: 10px; font-weight: 700;
+  margin-left: 2px; vertical-align: top;
+}
+.cmodal-list {
+  max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
+  border: 1px solid var(--grid); border-radius: 8px; padding: 9px 11px; background: var(--page);
+}
+.cmodal-item { border-top: 1px solid var(--grid); padding-top: 7px; font-size: 13px; }
+.cmodal-item:first-child { border-top: none; padding-top: 0; }
+.ci-head { font-size: 12px; margin-bottom: 2px; }
+.ci-ts { color: var(--muted); font-size: 11px; }
+.ci-text { white-space: pre-line; }
 .quoted-comment {
   background: var(--tint-warning); box-shadow: inset 3px 0 0 var(--st-warning);
   border-radius: 4px;
